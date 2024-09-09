@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gelişmiş YouTube Video Özetleyici</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary-color: #4a5568;
+            --secondary-color: #718096;
+            --accent-color: #4299e1;
+            --background-color: #1a202c;
+            --text-color: #e2e8f0;
+        }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        .sidebar {
+            background-color: rgba(26, 32, 44, 0.8);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .content-squares {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .content-square {
+            width: 150px;
+            height: 150px;
+            background-color: white;
+            color: black;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            text-decoration: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .content-square:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .website-icon {
+            width: 32px;
+            height: 32px;
+            margin-bottom: 10px;
+            color: #4a5568;
+        }
+        .content-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2d3748;
+        }
+        .content-link {
+            font-size: 0.8em;
+            color: #718096;
+        }
+        .summary-item {
+            transition: all 0.3s ease;
+        }
+        .summary-item:hover {
+            transform: translateX(5px);
+            background-color: rgba(74, 85, 104, 0.2);
+        }
+        .btn {
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(66, 153, 225, 0.5);
+        }
+        .summary-content {
+            font-family: 'Merriweather', serif;
+            line-height: 1.8;
+        }
+        .summary-content ol {
+            counter-reset: item;
+        }
+        .summary-content ol li {
+            display: block;
+            margin-bottom: 0.5em;
+        }
+        .summary-content ol li:before {
+            content: counter(item) ". ";
+            counter-increment: item;
+            font-weight: bold;
+            margin-right: 0.5em;
+        }
+        .summary-section {
+            margin-bottom: 1.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .summary-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .loading {
+            animation: pulse 1.5s infinite;
+        }
+        .source-number {
+            font-size: 0.8em;
+            vertical-align: super;
+            color: var(--accent-color);
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color 0.3s ease;
+        }
+        .source-number:hover {
+            color: #63b3ed; /* Daha açık bir mavi ton */
+        }
+        .tooltip {
+            position: absolute;
+            background-color: rgba(26, 32, 44, 0.9);
+            color: #e2e8f0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            z-index: 1000;
+            max-width: 300px;
+            word-wrap: break-word;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body class="flex h-screen">
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+        <symbol id="icon-web" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" fill="none" stroke="currentColor" stroke-width="2"/>
+        </symbol>
+        <symbol id="icon-data" viewBox="0 0 24 24">
+            <rect x="4" y="4" width="16" height="16" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
+            <line x1="4" y1="10" x2="20" y2="10" stroke="currentColor" stroke-width="2"/>
+            <line x1="10" y1="4" x2="10" y2="20" stroke="currentColor" stroke-width="2"/>
+        </symbol>
+        <symbol id="icon-doc" viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor" stroke-width="2"/>
+            <polyline points="14 2 14 8 20 8" fill="none" stroke="currentColor" stroke-width="2"/>
+            <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2"/>
+            <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/>
+            <polyline points="10 9 9 9 8 9" fill="none" stroke="currentColor" stroke-width="2"/>
+        </symbol>
+        <symbol id="icon-more" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="2" fill="currentColor"/>
+            <circle cx="19" cy="12" r="2" fill="currentColor"/>
+            <circle cx="5" cy="12" r="2" fill="currentColor"/>
+        </symbol>
+    </svg>
+
+    <div class="sidebar w-1/4 p-6 overflow-y-auto">
+        <div class="mb-4">
+            <button id="youtube-btn" class="w-1/2 p-2 bg-accent-color text-white rounded-l">YouTube</button>
+            <button id="search-btn" class="w-1/2 p-2 bg-gray-700 text-white rounded-r">Arama</button>
+        </div>
+        <div id="youtube-input" class="mb-4">
+            <input type="text" id="url-input" placeholder="YouTube URL'si girin" class="w-full p-3 bg-gray-700 text-white rounded">
+            <button id="summarize-btn" class="mt-2 w-full bg-accent-color text-white p-3 rounded btn">Özetle</button>
+        </div>
+        <div id="search-input" class="mb-4 hidden">
+            <input type="text" id="query-input" placeholder="Arama sorgusu girin" class="w-full p-3 bg-gray-700 text-white rounded">
+            <button id="search-query-btn" class="mt-2 w-full bg-accent-color text-white p-3 rounded btn">Ara</button>
+        </div>
+        <button id="delete-all-btn" class="mb-4 w-full bg-red-500 text-white p-2 rounded btn">Tümünü Sil</button>
+        <div id="result-list" class="space-y-2"></div>
+    </div>
+
+    <div class="main-content w-3/4 p-8 overflow-y-auto">
+        <h1 class="text-3xl font-bold mb-8 text-center text-gray-300">Gelişmiş YouTube Video Özetleyici</h1>
+        
+        <div id="loading" class="hidden text-center text-2xl font-bold loading">İşleniyor...</div>
+
+        <div id="content-squares" class="content-squares"></div>
+
+        <div id="summary" class="summary-content space-y-6">
+            <h2 class="text-2xl font-bold mb-4">Cevap:</h2>
+            <div class="sources mb-4">
+                <h3 class="text-xl font-bold mb-2">Kaynaklar</h3>
+                <div id="source-list" class="grid grid-cols-1 md:grid-cols-3 gap-2"></div>
+            </div>
+            <div id="perplexity-answer" class="mb-4"></div>
+            <div id="web-sites" class="mb-4"></div>
+            <div id="youtube-channels" class="mb-4"></div>
+        </div>
+
+        <div id="qa-section" class="mt-12 hidden">
+            <h2 class="text-2xl font-bold mb-4">Soru Sor</h2>
+            <textarea id="question-input" rows="3" placeholder="İçerik hakkında bir soru sorun" class="w-full p-3 bg-gray-700 text-white rounded mb-4"></textarea>
+            <button id="ask-btn" class="w-full bg-secondary-color text-white p-3 rounded btn">Sor</button>
+            <div id="answer" class="mt-6"></div>
+        </div>
+    </div>
+
+    <script>
+    let currentSummaryId = null;
+    let sources = [];
+    let isYouTubeMode = true;
+
+    function toggleMode() {
+        isYouTubeMode = !isYouTubeMode;
+        document.getElementById('youtube-btn').classList.toggle('bg-accent-color');
+        document.getElementById('youtube-btn').classList.toggle('bg-gray-700');
+        document.getElementById('search-btn').classList.toggle('bg-accent-color');
+        document.getElementById('search-btn').classList.toggle('bg-gray-700');
+        document.getElementById('youtube-input').classList.toggle('hidden');
+        document.getElementById('search-input').classList.toggle('hidden');
+        document.getElementById('result-list').innerHTML = '';
+        document.getElementById('summary').innerHTML = '';
+        document.getElementById('content-squares').innerHTML = '';
+        document.getElementById('qa-section').classList.add('hidden');
+    }
+
+    document.getElementById('youtube-btn').addEventListener('click', () => {
+        if (!isYouTubeMode) toggleMode();
+    });
+
+    document.getElementById('search-btn').addEventListener('click', () => {
+        if (isYouTubeMode) toggleMode();
+    });
+
+    document.getElementById('search-query-btn').addEventListener('click', () => {
+        const queryInput = document.getElementById('query-input');
+        const loadingElement = document.getElementById('loading');
+        const summaryElement = document.getElementById('summary');
+        
+        if (!queryInput.value.trim()) {
+            alert('Lütfen bir arama sorgusu girin.');
+            return;
+        }
+        
+        loadingElement.style.display = 'block';
+        summaryElement.innerHTML = '';
+        
+        fetch('/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: queryInput.value.trim() }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP hatası! durum: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            loadingElement.style.display = 'none';
+            displayResults(data.results);
+        })
+        .catch(error => {
+            loadingElement.style.display = 'none';
+            console.error('Hata:', error);
+            summaryElement.innerHTML = `<p class="text-red-500">Hata: ${error.message}</p>`;
+        });
+    });
+
+    function displayResults(results) {
+        if (!results || results.length === 0) {
+            console.error('Geçersiz veri yapısı veya sonuç bulunamadı:', results);
+            document.getElementById('summary').innerHTML = '<p class="text-red-500">Sonuç bulunamadı veya veri yüklenirken bir hata oluştu.</p>';
+            return;
+        }
+
+        const summaryElement = document.getElementById('summary');
+        const contentSquaresElement = document.getElementById('content-squares');
+        
+        // Perplexity cevabını ve genel açıklamayı ekleyelim
+        let perplexityAnswer = "Python, SQL ve FastAPI öğrenmek için en iyi web siteleri ve YouTube kanalları aşağıda listelenmiştir. Bu kaynaklar, başlangıç seviyesinden ileri seviyeye kadar geniş bir yelpazede eğitim materyali sunmaktadır.";
+        
+        summaryElement.innerHTML = `
+            <h2 class="text-2xl font-bold mb-4">Arama Sonuçları:</h2>
+            <div class="mb-6">
+                <h3 class="text-xl font-bold mb-2">Genel Bilgi</h3>
+                <p>${perplexityAnswer}</p>
+            </div>
+            <div class="sources mb-4">
+                <h3 class="text-xl font-bold mb-2">Kaynaklar</h3>
+                <div id="source-list" class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    ${results.map((source, index) => `
+                        <a href="${source.link}" target="_blank" class="bg-gray-700 p-2 rounded hover:bg-gray-600 transition duration-300">
+                            <div class="font-bold">${source.title}</div>
+                            <div class="text-sm text-gray-400">${source.link}</div>
+                            <div class="text-xs text-gray-500">${source.type} · ${index + 1}</div>
+                        </a>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        // Content squares'ı güncelle
+        contentSquaresElement.innerHTML = results.slice(0, 4).map((source, index) => {
+            let iconId = source.type === 'youtube' ? 'icon-data' : 'icon-web';
+            return `
+                <a href="${source.link}" target="_blank" class="content-square" data-source="${index + 1}">
+                    <svg class="website-icon"><use href="#${iconId}"/></svg>
+                    <div class="content-title">${source.title.substring(0, 50)}${source.title.length > 50 ? '...' : ''}</div>
+                    <div class="content-link">${new URL(source.link).hostname}</div>
+                </a>
+            `;
+        }).join('');
+
+        if (results.length > 4) {
+            contentSquaresElement.innerHTML += `
+                <a href="#" class="content-square" id="view-more-sources">
+                    <svg class="website-icon"><use href="#icon-more"/></svg>
+                    <div class="content-title">${results.length - 4} daha fazla görüntüle</div>
+                    <div class="content-link"></div>
+                </a>
+            `;
+        }
+
+        addSourceClickListeners();
+    }
+
+    function displayAnswer(data) {
+        if (!data || !data.sources) {
+            console.error('Geçersiz veri yapısı:', data);
+            document.getElementById('summary').innerHTML = '<p class="text-red-500">Veri yüklenirken bir hata oluştu.</p>';
+            return;
+        }
+
+        const summaryElement = document.getElementById('summary');
+        const sourceListElement = document.getElementById('source-list');
+        const perplexityAnswerElement = document.getElementById('perplexity-answer');
+        const webSitesElement = document.getElementById('web-sites');
+        const youtubeChannelsElement = document.getElementById('youtube-channels');
+
+        // Kaynakları görüntüle
+        sourceListElement.innerHTML = data.sources.map((source, index) => `
+            <div class="bg-gray-700 p-2 rounded">
+                <div class="font-bold">${source.title}</div>
+                <div class="text-sm text-gray-400">${source.link}</div>
+                <div class="text-xs text-gray-500">${source.type} · ${index + 1}</div>
+            </div>
+        `).join('');
+
+        // Perplexity cevabını görüntüle
+        if (data.perplexityAnswer) {
+            perplexityAnswerElement.innerHTML = `
+                <h3 class="text-xl font-bold mb-2">Perplexity</h3>
+                <p>${data.perplexityAnswer}</p>
+            `;
+        } else {
+            perplexityAnswerElement.innerHTML = '';
+        }
+
+        // Web sitelerini görüntüle
+        if (data.webSites && data.webSites.length > 0) {
+            webSitesElement.innerHTML = `
+                <h3 class="text-xl font-bold mb-2">Web Siteleri</h3>
+                <ul class="list-disc pl-5">
+                    ${data.webSites.map(site => `<li>${site}</li>`).join('')}
+                </ul>
+            `;
+        } else {
+            webSitesElement.innerHTML = '';
+        }
+
+        // YouTube kanallarını görüntüle
+        if (data.youtubeChannels && data.youtubeChannels.length > 0) {
+            youtubeChannelsElement.innerHTML = `
+                <h3 class="text-xl font-bold mb-2">YouTube Kanalları</h3>
+                <ul class="list-disc pl-5">
+                    ${data.youtubeChannels.map(channel => `<li>${channel}</li>`).join('')}
+                </ul>
+            `;
+        } else {
+            youtubeChannelsElement.innerHTML = '';
+        }
+
+        // Görsel öğeleri görüntüle (eğer varsa)
+        if (data.visualElements && data.visualElements.length > 0) {
+            const visualElementsContainer = document.createElement('div');
+            visualElementsContainer.className = 'grid grid-cols-2 gap-2 mt-4';
+            data.visualElements.forEach(element => {
+                const visualElement = document.createElement('div');
+                visualElement.className = 'bg-gray-800 p-2 rounded';
+                visualElement.innerHTML = `
+                    <img src="${element.imageUrl}" alt="${element.title}" class="w-full h-auto mb-2">
+                    <div class="font-bold">${element.title}</div>
+                    <div class="text-sm">${element.description}</div>
+                `;
+                visualElementsContainer.appendChild(visualElement);
+            });
+            summaryElement.appendChild(visualElementsContainer);
+        }
+    }
+
+    function addResultItemListeners() {
+        const resultItems = document.querySelectorAll('.result-item');
+        resultItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const index = item.dataset.index;
+                const source = sources[index];
+                loadContent(source);
+            });
+        });
+    }
+
+    function loadContent(source) {
+        const summaryElement = document.getElementById('summary');
+        summaryElement.innerHTML = `
+            <h2 class="text-2xl font-bold mb-6">${source.title}</h2>
+            <p class="text-gray-300">${source.link}</p>
+            <p class="mt-4">Kaynağı ziyaret etmek için <a href="${source.link}" target="_blank" class="text-blue-500 hover:underline">buraya tıklayın</a>.</p>
+        `;
+        document.getElementById('qa-section').classList.remove('hidden');
+    }
+
+    function loadSummaries() {
+        fetch('/api/summaries')
+            .then(response => response.json())
+            .then(summaries => {
+                const summaryList = document.getElementById('result-list');
+                summaryList.innerHTML = '';
+
+                summaries.forEach(summary => {
+                    const summaryItem = document.createElement('div');
+                    summaryItem.className = 'summary-item p-2 rounded cursor-pointer flex justify-between items-center';
+                    summaryItem.dataset.id = summary.id;
+                    
+                    const titleSpan = document.createElement('span');
+                    titleSpan.textContent = summary.title;
+                    summaryItem.appendChild(titleSpan);
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'X';
+                    deleteBtn.className = 'text-red-500 font-bold ml-2';
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteSummary(summary.id);
+                    };
+                    summaryItem.appendChild(deleteBtn);
+                    
+                    summaryList.appendChild(summaryItem);
+                });
+
+                addSummaryItemListeners();
+            })
+            .catch(error => console.error('Error loading summaries:', error));
+    }
+
+    function deleteSummary(id) {
+        console.log('Deleting summary with ID:', id); // Hata ayıklama için log
+        fetch(`/api/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ summary_id: id }),
+        })
+        .then(response => {
+            console.log('Delete response status:', response.status); // Hata ayıklama için log
+            if (response.ok) {
+                return response.json();
+            }
+            return response.text().then(text => {
+                throw new Error(`Silme işlemi başarısız oldu: ${text}`);
+            });
+        })
+        .then(data => {
+            console.log('Delete response data:', data); // Hata ayıklama için log
+            if (data.success) {
+                loadSummaries();
+            } else {
+                console.error('Özet silinemedi:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Hata:', error);
+            alert('Özet silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+        });
+    }
+    document.getElementById('delete-all-btn').addEventListener('click', () => {
+        if (confirm('Tüm özetleri silmek istediğinizden emin misiniz?')) {
+            fetch('/api/delete-all', {
+                method: 'POST',
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Tümünü silme işlemi başarısız oldu');
+            })
+            .then(data => {
+                if (data.success) {
+                    loadSummaries();
+                } else {
+                    console.error('Tüm özetler silinemedi:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Hata:', error);
+                alert('Tüm özetler silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+            });
+        }
+    });
+
+    function addSummaryItemListeners() {
+        const summaryItems = document.querySelectorAll('.summary-item');
+        summaryItems.forEach(item => {
+            item.addEventListener('click', () => {
+                summaryItems.forEach(i => i.classList.remove('bg-gray-700'));
+                item.classList.add('bg-gray-700');
+                const summaryId = item.dataset.id;
+                loadSummary(summaryId);
+            });
+
+            item.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showContextMenu(e, item.dataset.id);
+            });
+
+            item.addEventListener('dblclick', () => {
+                const newTitle = prompt('Yeni başlık girin:', item.textContent);
+                if (newTitle) {
+                    renameSummary(item.dataset.id, newTitle);
+                }
+            });
+        });
+    }
+
+    function showContextMenu(e, summaryId) {
+        const contextMenu = document.createElement('div');
+        contextMenu.className = 'absolute bg-gray-800 border border-gray-700 rounded shadow-lg z-50';
+        contextMenu.style.left = `${e.pageX}px`;
+        contextMenu.style.top = `${e.pageY}px`;
+
+        const renameOption = document.createElement('div');
+        renameOption.textContent = 'Yeniden Adlandır';
+        renameOption.className = 'p-2 hover:bg-gray-700 cursor-pointer';
+        renameOption.onclick = () => {
+            const newTitle = prompt('Yeni başlık girin:');
+            if (newTitle) {
+                renameSummary(summaryId, newTitle);
+            }
+            contextMenu.remove();
+        };
+
+        const deleteOption = document.createElement('div');
+        deleteOption.textContent = 'Sil';
+        deleteOption.className = 'p-2 hover:bg-gray-700 cursor-pointer';
+        deleteOption.onclick = () => {
+            if (confirm('Bu özeti silmek istediğinizden emin misiniz?')) {
+                deleteSummary(summaryId);
+            }
+            contextMenu.remove();
+        };
+
+        contextMenu.appendChild(renameOption);
+        contextMenu.appendChild(deleteOption);
+        document.body.appendChild(contextMenu);
+
+        document.addEventListener('click', () => contextMenu.remove(), { once: true });
+    }
+
+    function renameSummary(id, newTitle) {
+        fetch('/api/rename', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ summary_id: id, new_name: newTitle }),
+        })
+        .then(response => {
+            if (response.ok) {
+                loadSummaries();
+            } else {
+                console.error('Error renaming summary');
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function loadSummary(summaryId) {
+        fetch(`/summary/${summaryId}`)
+            .then(response => response.json())
+            .then(data => {
+                const summaryElement = document.getElementById('summary');
+                const summaryParts = data.summary.split('\n\n');
+                
+                let title = summaryParts.find(part => part.startsWith('Title:'))?.replace('Title:', '').trim();
+                let abstract = summaryParts.find(part => part.startsWith('Abstract:'));
+                let introduction = summaryParts.find(part => part.startsWith('Introduction:'));
+                let keyPoints = summaryParts.find(part => part.startsWith('Key Points:'));
+                let conclusion = summaryParts.find(part => part.startsWith('Conclusion:'));
+
+                summaryElement.innerHTML = `
+                    <h2 class="text-2xl font-bold mb-6">${title || 'Summary'}</h2>
+                    ${abstract ? `
+                    <div class="summary-section">
+                        <h3 class="text-xl font-bold mb-2">Abstract</h3>
+                        <p>${abstract.replace('Abstract:', '').trim()}</p>
+                    </div>
+                    ` : ''}
+                    ${introduction ? `
+                    <div class="summary-section">
+                        <h3 class="text-xl font-bold mb-2">Introduction</h3>
+                        <p>${introduction.replace('Introduction:', '').trim()}</p>
+                    </div>
+                    ` : ''}
+                    ${keyPoints ? `
+                    <div class="summary-section">
+                        <h3 class="text-xl font-bold mb-2">Key Points</h3>
+                        <ul class="list-disc pl-5 space-y-2">
+                            ${keyPoints.replace('Key Points:', '').trim().split('\n')
+                                .map(point => point.trim())
+                                .filter(point => point)
+                                .map(point => `<li>${point.replace(/^-\s*/, '')}</li>`)
+                                .join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+                    ${conclusion ? `
+                    <div class="summary-section">
+                        <h3 class="text-xl font-bold mb-2">Conclusion</h3>
+                        <p>${conclusion.replace('Conclusion:', '').trim()}</p>
+                    </div>
+                    ` : ''}
+                `;
+                currentSummaryId = data.id;
+                document.getElementById('qa-section').style.display = 'block';
+                
+                setTimeout(() => {
+                    document.querySelectorAll('.summary-section').forEach((section, index) => {
+                        setTimeout(() => {
+                            section.classList.add('visible');
+                        }, index * 200);
+                    });
+                }, 100);
+
+                loadSimilarSources(summaryId);
+                addSourceClickListeners();
+            })
+            .catch(error => console.error('Error loading summary:', error));
+    }
+
+    function loadSimilarSources(summaryId) {
+        fetch(`/api/similar-sources/${summaryId}`)
+            .then(response => response.json())
+            .then(data => {
+                sources = [...(data.websites || []), ...(data.youtube_channels || [])];
+                const contentSquaresElement = document.getElementById('content-squares');
+                contentSquaresElement.innerHTML = '';
+
+                if (sources.length > 0) {
+                    sources.slice(0, 4).forEach((source, index) => {
+                        let iconId = source.link.includes('youtube.com') ? 'icon-data' : 'icon-web';
+                        contentSquaresElement.innerHTML += `
+                            <a href="${source.link}" target="_blank" class="content-square" data-source="${index + 1}">
+                                <svg class="website-icon"><use href="#${iconId}"/></svg>
+                                <div class="content-title">${source.title.substring(0, 50)}${source.title.length > 50 ? '...' : ''}</div>
+                                <div class="content-link">${new URL(source.link).hostname}</div>
+                            </a>
+                        `;
+                    });
+
+                    if (sources.length > 4) {
+                        contentSquaresElement.innerHTML += `
+                            <a href="#" class="content-square" id="view-more-sources">
+                                <svg class="website-icon"><use href="#icon-more"/></svg>
+                                <div class="content-title">${sources.length - 4} daha fazla görüntüle</div>
+                                <div class="content-link"></div>
+                            </a>
+                        `;
+                    }
+                } else {
+                    contentSquaresElement.innerHTML = '<p>Benzer kaynak bulunamadı.</p>';
+                }
+                addSourceNumbers();
+            })
+            .catch(error => console.error('Error loading similar sources:', error));
+    }
+
+    function addSourceNumbers() {
+        const summaryElement = document.getElementById('summary');
+        const sentences = summaryElement.innerHTML.match(/[^.!?]+[.!?]+/g) || [];
+        
+        sentences.forEach((sentence, index) => {
+            const sourceIndex = Math.floor(Math.random() * sources.length);
+            const sourceNumber = sourceIndex + 1;
+            const updatedSentence = sentence.trim() + ` <span class="source-number" data-source="${sourceNumber}">[${sourceNumber}]</span>`;
+            summaryElement.innerHTML = summaryElement.innerHTML.replace(sentence, updatedSentence);
+        });
+
+        addTooltipListeners();
+    }
+
+    function addTooltipListeners() {
+        const sourceNumbers = document.querySelectorAll('.source-number');
+        sourceNumbers.forEach(span => {
+            span.addEventListener('mouseover', showTooltip);
+            span.addEventListener('mouseout', hideTooltip);
+            span.addEventListener('click', openSource);
+        });
+    }
+
+    function showTooltip(event) {
+        const sourceNumber = event.target.dataset.source;
+        const source = sources[sourceNumber - 1];
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip';
+        tooltip.innerHTML = `
+            <div class="font-bold">${source.title}</div>
+            <div>${source.link}</div>
+        `;
+        document.body.appendChild(tooltip);
+        
+        const rect = event.target.getBoundingClientRect();
+        tooltip.style.left = `${rect.left}px`;
+        tooltip.style.top = `${rect.bottom + 5}px`;
+
+        setTimeout(() => {
+            tooltip.style.opacity = 1;
+        }, 10);
+    }
+
+    function hideTooltip() {
+        const tooltips = document.querySelectorAll('.tooltip');
+        tooltips.forEach(tooltip => {
+            tooltip.style.opacity = 0;
+            setTimeout(() => {
+                tooltip.remove();
+            }, 300);
+        });
+    }
+
+    function openSource(event) {
+        event.preventDefault();
+        const sourceNumber = event.target.dataset.source;
+        const source = sources[sourceNumber - 1];
+        if (source && source.link) {
+            window.open(source.link, '_blank');
+        }
+    }
+
+    function addSourceClickListeners() {
+        const contentSquares = document.querySelectorAll('.content-square');
+        contentSquares.forEach(square => {
+            square.addEventListener('click', (event) => {
+                event.preventDefault();
+                const link = square.getAttribute('href');
+                if (link && link !== '#') {
+                    window.open(link, '_blank');
+                } else if (square.id === 'view-more-sources') {
+                    showAllSources();
+                }
+            });
+        });
+    }
+
+    function showAllSources() {
+        const contentSquaresElement = document.getElementById('content-squares');
+        contentSquaresElement.innerHTML = sources.map((source, index) => {
+            let iconId = source.link.includes('youtube.com') ? 'icon-data' : 'icon-web';
+            return `
+                <a href="${source.link}" target="_blank" class="content-square" data-source="${index + 1}">
+                    <svg class="website-icon"><use href="#${iconId}"/></svg>
+                    <div class="content-title">${source.title.substring(0, 50)}${source.title.length > 50 ? '...' : ''}</div>
+                    <div class="content-link">${new URL(source.link).hostname}</div>
+                </a>
+            `;
+        }).join('');
+        addSourceClickListeners();
+    }
+
+    document.getElementById('summarize-btn').addEventListener('click', () => {
+        const urlInput = document.getElementById('url-input');
+        const loadingElement = document.getElementById('loading');
+        const summaryElement = document.getElementById('summary');
+
+        loadingElement.style.display = 'block';
+        summaryElement.innerHTML = '';
+
+        fetch('/summarize', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: urlInput.value }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP hatası! durum: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            loadingElement.style.display = 'none';
+            if (data.id && data.title && data.summary) {
+                loadSummary(data.id);
+                loadSummaries();
+            } else {
+                throw new Error('Geçersiz yanıt verisi');
+            }
+        })
+        .catch(error => {
+            loadingElement.style.display = 'none';
+            console.error('Hata:', error);
+            summaryElement.innerHTML = `<p class="text-red-500">Hata: ${error.message}</p>`;
+        });
+    });
+
+    document.getElementById('ask-btn').addEventListener('click', () => {
+        const questionInput = document.getElementById('question-input');
+        const answerElement = document.getElementById('answer');
+        
+        fetch('/ask', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ summary_id: currentSummaryId, question: questionInput.value }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            answerElement.innerHTML = `<p class="font-bold mb-2">Cevap:</p><p>${data.answer}</p>`;
+            answerElement.style.opacity = 0;
+            answerElement.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                answerElement.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                answerElement.style.opacity = 1;
+                answerElement.style.transform = 'translateY(0)';
+            }, 100);
+        })
+        .catch(error => {
+            answerElement.innerHTML = `<p class="text-red-500">Hata: ${error.message}</p>`;
+        });
+    });
+
+    document.getElementById('filter-input').addEventListener('input', (e) => {
+        const filterTerm = e.target.value.toLowerCase();
+        const summaryItems = document.querySelectorAll('.summary-item');
+        
+        summaryItems.forEach(item => {
+            const title = item.textContent.toLowerCase();
+            if (title.includes(filterTerm)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (isYouTubeMode) {
+            loadSummaries();
+        }
+    });
+    </script>
+</body>
+</html>
