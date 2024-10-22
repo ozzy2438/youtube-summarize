@@ -46,6 +46,7 @@ This project is a sophisticated web application that summarizes YouTube videos, 
    GOOGLE_CLIENT_SECRET=your_google_client_secret
    GOOGLE_API_KEY=your_google_api_key
    GOOGLE_CSE_ID=your_google_cse_id
+   ```
 
 5. Create the database:
    ```
@@ -58,6 +59,12 @@ This project is a sophisticated web application that summarizes YouTube videos, 
    ```
 
 7. Open `http://localhost:5001` in your browser.
+
+### Project Roadmap
+
+Below is a flowchart illustrating the project roadmap:
+
+![Project Roadmap](static/project_roadmap.png)
 
 ## Usage
 
