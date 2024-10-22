@@ -22,8 +22,8 @@ This project is a sophisticated web application that summarizes YouTube videos, 
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-username/advanced-youtube-summarizer.git
-   cd advanced-youtube-summarizer
+   git clone https://github.com/ozzy2438/youtube-summarize.git
+   cd youtube-summarize
    ```
 
 2. Create and activate a virtual environment:
@@ -81,7 +81,28 @@ This project is a sophisticated web application that summarizes YouTube videos, 
 ## Development
 
 - `yt_sum.py`: Main FastAPI application and backend logic
-- `static/index.html`: Frontend interface and JavaScript code## Contributing
+- `static/index.html`: Frontend interface and JavaScript code
+
+## Deployment with Vercel
+
+1. Install Vercel CLI:
+   ```
+   npm install -g vercel
+   ```
+
+2. Login to Vercel:
+   ```
+   vercel login
+   ```
+
+3. Deploy the application:
+   ```
+   vercel
+   ```
+
+4. Follow the prompts to complete the deployment.
+
+## Contributing
 
 1. Fork this repository
 2. Create a new feature branch (`git checkout -b feature/AmazingFeature`)
@@ -97,6 +118,4 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 Project Owner: [Your Name] - email@example.com
 
-Project Link: [https://github.com/your-username/advanced-youtube-summarizer](https://github.com/your-username/advanced-youtube-summarizer)
-
-
+Project Link: [https://github.com/ozzy2438/youtube-summarize](https://github.com/ozzy2438/youtube-summarize)
