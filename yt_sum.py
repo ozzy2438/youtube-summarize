@@ -261,7 +261,10 @@ async def summarize_video(video: VideoURL, db: Session = Depends(get_db)):
         db.refresh(new_summary)
 
         logger.info(f"New summary created successfully: ID={unique_id}")
-        return {"id": new_summary.id, "title": new_summary.title, "summary": new_summary.summary}
+
+        # Fetch relational sources
+        relational_sources = await fetch_relational_sources(title)
+        return {"id": new_summary.id, "title": new_summary.title, "summary": new_summary.summary, "relational_sources": relational_sources}
     except Exception as e:
         logger.error(f"Error in summarize_video: {str(e)}")
         db.rollback()
@@ -379,6 +382,15 @@ async def get_similar_sources(summary_id: str, db: Session = Depends(get_db)):
 
     similar_sources = search_similar_sources(summary.title, api_key, cse_id)
     return similar_sources
+
+@app.get("/api/relational-sources/{summary_id}")
+async def get_relational_sources(summary_id: str, db: Session = Depends(get_db)):
+    summary = db.query(Summary).filter(Summary.id == summary_id).first()
+    if not summary:
+        raise HTTPException(status_code=404, detail="Summary not found")
+
+    relational_sources = await fetch_relational_sources(summary.title)
+    return relational_sources
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -522,6 +534,39 @@ def search_similar_sources(query, api_key, cse_id):
         return search_response.get('items', [])
 
     # Web siteleri arama
+    websites = google_search(query, api_key, cse_id, num=5)
+    
+    # YouTube kanalları arama
+    youtube_channels = youtube_search(query, api_key)
+
+    results = {
+        "websites": [{"title": item['title'], "link": item['link'], "type": "website"} for item in websites],
+        "youtube_channels": [{"title": item['snippet']['title'], "link": f"https://www.youtube.com/watch?v={item['id']['videoId']}", "type": "youtube"} for item in youtube_channels]
+    }
+
+    return results
+
+async def fetch_relational_sources(query):
+    # Google Custom Search API için fonksiyon
+    def google_search(search_term, api_key, cse_id, **kwargs):
+        service = build("customsearch", "v1", developerKey=api_key)
+        res = service.cse().list(q=search_term, cx=cse_id, **kwargs).execute()
+        return res['items'] if 'items' in res else []
+
+    # YouTube Data API için fonksiyon
+    def youtube_search(search_term, api_key, **kwargs):
+        youtube = build('youtube', 'v3', developerKey=api_key)
+        search_response = youtube.search().list(
+            q=search_term,
+            type='video',
+            part='id,snippet',
+            maxResults=5
+        ).execute()
+        return search_response.get('items', [])
+
+    # Web siteleri arama
+    api_key = os.getenv("GOOGLE_API_KEY")
+    cse_id = os.getenv("GOOGLE_CSE_ID")
     websites = google_search(query, api_key, cse_id, num=5)
     
     # YouTube kanalları arama

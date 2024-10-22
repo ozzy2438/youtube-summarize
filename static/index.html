@@ -201,6 +201,10 @@
             <div id="perplexity-answer" class="mb-4"></div>
             <div id="web-sites" class="mb-4"></div>
             <div id="youtube-channels" class="mb-4"></div>
+            <div id="relational-sources" class="mb-4">
+                <h3 class="text-xl font-bold mb-2">İlişkili Kaynaklar</h3>
+                <div id="relational-source-list" class="grid grid-cols-1 md:grid-cols-3 gap-2"></div>
+            </div>
         </div>
 
         <div id="qa-section" class="mt-12 hidden">
@@ -345,6 +349,7 @@
         const perplexityAnswerElement = document.getElementById('perplexity-answer');
         const webSitesElement = document.getElementById('web-sites');
         const youtubeChannelsElement = document.getElementById('youtube-channels');
+        const relationalSourceListElement = document.getElementById('relational-source-list');
 
         // Kaynakları görüntüle
         sourceListElement.innerHTML = data.sources.map((source, index) => `
@@ -387,6 +392,19 @@
             `;
         } else {
             youtubeChannelsElement.innerHTML = '';
+        }
+
+        // İlişkili kaynakları görüntüle
+        if (data.relationalSources && data.relationalSources.length > 0) {
+            relationalSourceListElement.innerHTML = data.relationalSources.map((source, index) => `
+                <div class="bg-gray-700 p-2 rounded">
+                    <div class="font-bold">${source.title}</div>
+                    <div class="text-sm text-gray-400">${source.link}</div>
+                    <div class="text-xs text-gray-500">${source.type} · ${index + 1}</div>
+                </div>
+            `).join('');
+        } else {
+            relationalSourceListElement.innerHTML = '';
         }
 
         // Görsel öğeleri görüntüle (eğer varsa)
